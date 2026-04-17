@@ -1,0 +1,179 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: categories
+// Document ID: {categoryId}
+// Fields:
+//   - id: string (required)
+//   - title: string (required)
+//   - description: string (optional)
+//   - status: string (optional)
+//   - links: list of maps (required)
+//   - order: number (optional)
+//
+// Collection: exploits
+// Document ID: {exploitId}
+// Fields:
+//   - id: string (required)
+//   - title: string (required)
+//   - category: string (required)
+//   - summary: string (required)
+//   - content: string (required)
+//   - updatedAt: string (required)
+//   - bookmarklet: string (optional)
+//   - tags: list of strings (optional)
+//
+// Collection: adminLogs
+// Document ID: {logId}
+// Fields:
+//   - event: string (required)
+//   - time: timestamp (required)
+//   - status: string (required)
+//
+// Collection: settings
+// Document ID: global
+// Fields:
+//   - maintenanceMode: bool (optional)
+//   - userSubmissions: bool (optional)
+//
+// Collection: submissions
+// Document ID: {submissionId}
+// Fields:
+//   - id: string (required)
+//   - uuid: string (required)
+//   - links: list of maps (required)
+//   - category: string (required)
+//   - isNewCategory: bool (required)
+//   - status: string (required)
+//   - createdAt: timestamp (required)
+//
+// Collection: bans
+// Document ID: {uuid}
+// Fields:
+//   - uuid: string (required)
+//   - bannedAt: timestamp (required)
+//
+// Collection: updateLogs
+// Document ID: {logId}
+// Fields:
+//   - id: string (required)
+//   - content: string (required)
+//   - type: string (required)
+//   - timestamp: timestamp (required)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "antonheutz10@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidCategory(data) {
+      return data.id is string && data.id.size() > 0 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.links is list && data.links.size() < 500;
+    }
+
+    function isValidExploit(data) {
+      return data.id is string && data.id.size() > 0 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.category is string &&
+             data.summary is string && data.summary.size() < 1000 &&
+             data.content is string && data.content.size() < 50000;
+    }
+
+    function isValidLog(data) {
+      return data.event is string && data.event.size() > 0 &&
+             data.time is timestamp &&
+             data.status is string;
+    }
+
+    function isValidSubmission(data) {
+      return data.id is string && data.id.size() > 0 &&
+             data.uuid is string && data.uuid.size() > 0 &&
+             data.links is list && data.links.size() > 0 && data.links.size() <= 10 &&
+             data.category is string && data.category.size() > 0 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isBanned(uuid) {
+      return exists(/databases/$(database)/documents/bans/$(uuid));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /categories/{categoryId} {
+      allow read: if true; // Publicly readable
+      allow create, update: if isAdmin() && isValidCategory(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /exploits/{exploitId} {
+      allow read: if true; // Publicly readable
+      allow create, update: if isAdmin() && isValidExploit(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /adminLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidLog(request.resource.data);
+      allow update, delete: if false; // Logs are immutable
+    }
+
+    match /settings/global {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isAdmin();
+      allow create: if !isBanned(request.resource.data.uuid) && isValidSubmission(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /bans/{uuid} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /updateLogs/{logId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+    
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

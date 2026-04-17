@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "Category": {
+      "title": "Category",
+      "description": "A category of links (e.g., Games, Proxies).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the category." },
+        "title": { "type": "string", "description": "Display title of the category." },
+        "description": { "type": "string", "description": "Brief description of the category." },
+        "status": { "type": "string", "description": "Current status (e.g., Stable ✅)." },
+        "links": {
+          "type": "array",
+          "description": "List of links in this category.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "order": { "type": "number", "description": "Display order." }
+      },
+      "required": ["id", "title", "links"]
+    },
+    "Exploit": {
+      "title": "Exploit",
+      "description": "An exploit, cheat, or tutorial.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "summary": { "type": "string" },
+        "content": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "bookmarklet": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "title", "category", "summary", "content", "updatedAt"]
+    },
+    "AdminLog": {
+      "title": "AdminLog",
+      "description": "A log of administrative actions.",
+      "type": "object",
+      "properties": {
+        "event": { "type": "string" },
+        "time": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" }
+      },
+      "required": ["event", "time", "status"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "A user-submitted link proposal.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uuid": { "type": "string", "description": "Anonymous user identifier for rate limiting/banning." },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "category": { "type": "string" },
+        "isNewCategory": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "uuid", "links", "category", "status", "createdAt"]
+    },
+    "Ban": {
+      "title": "Ban",
+      "description": "A banned user UUID.",
+      "type": "object",
+      "properties": {
+        "uuid": { "type": "string" },
+        "reason": { "type": "string" },
+        "bannedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uuid", "bannedAt"]
+    },
+    "UpdateLog": {
+      "title": "UpdateLog",
+      "description": "A public log of site updates.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["auto", "manual"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "content", "type", "timestamp"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global site settings.",
+      "type": "object",
+      "properties": {
+        "maintenanceMode": { "type": "boolean" },
+        "userSubmissions": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of link categories."
+    },
+    "/exploits/{exploitId}": {
+      "schema": "Exploit",
+      "description": "Collection of exploits and cheats."
+    },
+    "/adminLogs/{logId}": {
+      "schema": "AdminLog",
+      "description": "Collection of admin activity logs."
+    },
+    "/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Collection of user link submissions."
+    },
+    "/bans/{uuid}": {
+      "schema": "Ban",
+      "description": "Collection of banned user UUIDs."
+    },
+    "/updateLogs/{logId}": {
+      "schema": "UpdateLog",
+      "description": "Collection of site update logs."
+    },
+    "/settings/global": {
+      "schema": "Settings",
+      "description": "Global site settings document."
+    }
+  }
+}
